@@ -4,6 +4,8 @@ import { supabase } from '../config/supabase';
 
 export class StockController {
   async createMovement(req: Request, res: Response) {
+    console.log('Chamando createMovement', req.body);
+
     const schema = z.object({
       productId: z.string().uuid(),
       type: z.enum(['IN', 'OUT']),
