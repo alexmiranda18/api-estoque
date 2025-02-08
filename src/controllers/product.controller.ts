@@ -8,6 +8,7 @@ interface StockItem {
   min_stock: number;
   product_id: string;
 }
+
 interface Movement {
   type: 'IN' | 'OUT';
   quantity: number;
@@ -147,8 +148,8 @@ export class ProductController {
       const { data: stockData } = await supabase.rpc('get_current_stock');
       if (stockData) {
         const belowMinStockProducts = stockData
-          .filter((item: StockItem) => item.current_stock < item.min_stock) // Especifica o tipo 'StockItem' para 'item'
-          .map((item: StockItem) => item.product_id); // Especifica o tipo 'StockItem' para 'item'
+          .filter((item: StockItem) => item.current_stock < item.min_stock)
+          .map((item: StockItem) => item.product_id);
         query = query.in('id', belowMinStockProducts);
       }
     }
@@ -173,9 +174,7 @@ export class ProductController {
           currentStock,
           current_stock: undefined,
       };
-  });
-  
-  
+    });
 
     return res.json(productsWithStock);
   }

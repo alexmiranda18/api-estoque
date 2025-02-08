@@ -9,6 +9,10 @@ export class CategoryController {
       description: z.string().optional(),
     });
 
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { name, description } = schema.parse(req.body);
 
     const { data: category, error } = await supabase
@@ -17,7 +21,7 @@ export class CategoryController {
         {
           name,
           description,
-          created_by: req.user!.id,
+          created_by: req.user.id,
         },
       ])
       .select()
@@ -36,13 +40,17 @@ export class CategoryController {
       sort: z.enum(['name', 'created_at']).optional().default('name'),
       order: z.enum(['asc', 'desc']).optional().default('asc'),
     });
+
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
   
     const { search, sort, order } = schema.parse(req.query);
   
     let query = supabase
       .from('categories')
-      .select('*')  // Ajuste o select para incluir todas as colunas necessárias
-      .eq('created_by', req.user!.id)  // Filtra pelo ID do usuário
+      .select('*')
+      .eq('created_by', req.user.id)  // Filtra pelo ID do usuário
       .order(sort, { ascending: order === 'asc' });
   
     if (search) {
@@ -57,14 +65,16 @@ export class CategoryController {
   
     return res.json(categories);
   }
-  
-  
 
   async update(req: Request, res: Response) {
     const schema = z.object({
       name: z.string().min(1),
       description: z.string().optional(),
     });
+
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
 
     const { id } = req.params;
     const { name, description } = schema.parse(req.body);
@@ -73,7 +83,7 @@ export class CategoryController {
       .from('categories')
       .update({ name, description })
       .eq('id', id)
-      .eq('created_by', req.user!.id)
+      .eq('created_by', req.user.id)
       .select()
       .single();
 
@@ -91,6 +101,10 @@ export class CategoryController {
   async delete(req: Request, res: Response) {
     const { id } = req.params;
 
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { error: productsError } = await supabase
       .from('products')
       .select('id')
@@ -107,7 +121,7 @@ export class CategoryController {
       .from('categories')
       .delete()
       .eq('id', id)
-      .eq('created_by', req.user!.id);
+      .eq('created_by', req.user.id);
 
     if (error) {
       return res.status(500).json({ message: 'Error deleting category' });
