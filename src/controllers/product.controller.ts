@@ -73,7 +73,13 @@ export class ProductController {
     if (productError) {
       return res.status(500).json({ message: 'Error creating product' });
     }
-
+    console.log('Criando movimentação de estoque:', {
+      product_id: product.id,
+      type: 'IN',
+      quantity: initialStock,
+      created_by: req.user.id,
+    });
+    
     if (initialStock > 0) {
       const { error: stockError } = await supabase
         .from('stock_movements')
