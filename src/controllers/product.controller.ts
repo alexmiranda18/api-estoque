@@ -2,6 +2,22 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { supabase } from '../config/supabase';
 
+// Defina a interface no início do arquivo ou em um arquivo separado de tipos
+interface StockItem {
+  current_stock: number;
+  min_stock: number;
+  product_id: string;
+}
+interface Movement {
+  type: 'IN' | 'OUT';
+  quantity: number;
+}
+
+interface Product {
+  current_stock?: Movement[];
+  // outras propriedades do produto
+}
+
 export class ProductController {
   async create(req: Request, res: Response) {
     const schema = z.object({
@@ -10,8 +26,14 @@ export class ProductController {
       categoryId: z.string().uuid(),
       sku: z.string().min(1),
       price: z.preprocess((val) => Number(val), z.number().min(0).default(0)),
-      minStock: z.preprocess((val) => Number(val), z.number().int().min(0).default(0)),
-      initialStock: z.preprocess((val) => Number(val), z.number().int().min(0).default(0)),
+      minStock: z.preprocess(
+        (val) => Number(val),
+        z.number().int().min(0).default(0),
+      ),
+      initialStock: z.preprocess(
+        (val) => Number(val),
+        z.number().int().min(0).default(0),
+      ),
     });
 
     if (!req.user) {
@@ -19,7 +41,15 @@ export class ProductController {
     }
 
     const file = req.file;
-    const { name, description, categoryId, sku, price, minStock, initialStock } = schema.parse(req.body);
+    const {
+      name,
+      description,
+      categoryId,
+      sku,
+      price,
+      minStock,
+      initialStock,
+    } = schema.parse(req.body);
 
     const { data: product, error: productError } = await supabase
       .from('products')
@@ -74,7 +104,10 @@ export class ProductController {
     const schema = z.object({
       search: z.string().optional(),
       categoryId: z.string().uuid().optional(),
-      sort: z.enum(['name', 'sku', 'price', 'created_at']).optional().default('name'),
+      sort: z
+        .enum(['name', 'sku', 'price', 'created_at'])
+        .optional()
+        .default('name'),
       order: z.enum(['asc', 'desc']).optional().default('asc'),
       minStock: z.enum(['below', 'above']).optional(),
     });
@@ -83,18 +116,22 @@ export class ProductController {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { search, categoryId, sort, order, minStock } = schema.parse(req.query);
+    const { search, categoryId, sort, order, minStock } = schema.parse(
+      req.query,
+    );
 
     let query = supabase
       .from('products')
-      .select(`
+      .select(
+        `
         *,
         category:categories(name),
         current_stock:stock_movements(
           quantity,
           type
         )
-      `)
+      `,
+      )
       .eq('created_by', req.user.id)
       .order(sort, { ascending: order === 'asc' });
 
@@ -110,8 +147,8 @@ export class ProductController {
       const { data: stockData } = await supabase.rpc('get_current_stock');
       if (stockData) {
         const belowMinStockProducts = stockData
-          .filter((item) => item.current_stock < item.min_stock)
-          .map((item) => item.product_id);
+          .filter((item: StockItem) => item.current_stock < item.min_stock) // Especifica o tipo 'StockItem' para 'item'
+          .map((item: StockItem) => item.product_id); // Especifica o tipo 'StockItem' para 'item'
         query = query.in('id', belowMinStockProducts);
       }
     }
@@ -122,21 +159,23 @@ export class ProductController {
       return res.status(500).json({ message: 'Error fetching products' });
     }
 
-    const productsWithStock = products?.map((product) => {
+    const productsWithStock = products?.map((product: Product) => {
       const currentStock =
-        product.current_stock?.reduce((total, movement) => {
-          return (
-            total +
-            (movement.type === 'IN' ? movement.quantity : -movement.quantity)
-          );
-        }, 0) ?? 0;
-
+          product.current_stock?.reduce((total: number, movement: Movement) => {
+              return (
+                  total +
+                  (movement.type === 'IN' ? movement.quantity : -movement.quantity)
+              );
+          }, 0) ?? 0;
+  
       return {
-        ...product,
-        currentStock,
-        current_stock: undefined,
+          ...product,
+          currentStock,
+          current_stock: undefined,
       };
-    });
+  });
+  
+  
 
     return res.json(productsWithStock);
   }
@@ -157,7 +196,8 @@ export class ProductController {
 
     const { id } = req.params;
     const file = req.file;
-    const { name, description, categoryId, sku, price, minStock } = schema.parse(req.body);
+    const { name, description, categoryId, sku, price, minStock } =
+      schema.parse(req.body);
 
     const updateData: any = {
       name,
@@ -205,7 +245,9 @@ export class ProductController {
         .eq('product_id', id);
 
       if (stockError) {
-        return res.status(500).json({ message: 'Error deleting stock movements' });
+        return res
+          .status(500)
+          .json({ message: 'Error deleting stock movements' });
       }
 
       const { error: productError } = await supabase

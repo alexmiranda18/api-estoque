@@ -246,7 +246,9 @@ export class AuthController {
       return res.json({ token: jwtToken });
     } catch (error) {
       console.error('Erro no login com Google:', error);
-      return res.status(500).json({ message: 'Login with Google failed', error: error.message });
-    }
+      const err = error as Error; // Converte 'error' para o tipo Error
+      return res.status(500).json({ message: 'Login with Google failed', error: err.message });
+  }
+  
   }
 }
